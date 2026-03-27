@@ -115,7 +115,7 @@ def get_arguments():
                              required=False, default=0, help='Maximum number of records per fastq')
 
     basecall_group.add_argument("-rq", "--min_read_quality", type=int, dest="min_read_quality",
-                             required=False, default=8, help="Filter on a minimum average read quality score. Default: 8")
+                             required=False, default=15, help="Filter on a minimum average read quality score. Default: 15")
 
     basecall_group.add_argument("--trim", type=str, dest="trim",
                              required=False, default="adapters", help="Specify what to trim. Options are 'none', 'all', and 'adapters'. The default behaviour is to trim all detected adapters, primers, and barcodes. Choose 'adapters' to just trim adapters. The 'none' choice is equivelent to using --no-trim. Note that this only applies to DNA. RNA adapters are always trimmed. Default: adapters")

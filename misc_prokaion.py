@@ -251,18 +251,18 @@ def remove_low_quality(input_dir, output_dir, cov20=70, unmapped_per=25, min_hq_
                     stats_df = stats_df.fillna(0)
 
                     # Handle repeated names
-                    stats_df["HQ_SNP"] = stats_df["HQ_SNP"].astype(str)
+                    stats_df["HQ70_SNP"] = stats_df["HQ70_SNP"].astype(str)
 
                     def f(x):
                         return (x if x.replace(".", "", 1).isdigit() else max(x.strip("()").split(",")))
 
-                    stats_df["HQ_SNP"] = stats_df.apply(
-                        lambda x: f(x.HQ_SNP), axis=1)
-                    stats_df["HQ_SNP"] = stats_df["HQ_SNP"].astype(float)
+                    stats_df["HQ70_SNP"] = stats_df.apply(
+                        lambda x: f(x.HQ70_SNP), axis=1)
+                    stats_df["HQ70_SNP"] = stats_df["HQ70_SNP"].astype(float)
 
                     # Store samples under any of the parameters indicated
                     uncovered_samples = stats_df["#SAMPLE"][(stats_df["COV>20X"] <= cov20) | (stats_df["UNMAPPED_PROP"] >= unmapped_per) | (
-                        stats_df["HQ_SNP"] < min_hq_snp)].tolist()
+                        stats_df["HQ70_SNP"] < min_hq_snp)].tolist()
                     # print(uncovered_samples)
 
                     # Create a df with only covered to replace the original
@@ -559,8 +559,16 @@ def extract_snp_count(out_variant_dir, filename_out):
     if os.path.exists(filename):
         df = pd.read_csv(filename, sep="\t")
         df = df.drop_duplicates(subset=["POS", "REF", "ALT"], keep="first")
-        high_quality_snps = df["POS"][(df.TOTAL_DP >= 30) & 
+        high70_quality_snps = df["POS"][(df.TOTAL_DP >= 30) & 
                                       (df.ALT_FREQ >= 0.7) & 
+                                      (df.TYPE == "snp") & 
+                                      ~df.OLDVAR.isin(['complex', 'mnp'])].tolist()
+        high80_quality_snps = df["POS"][(df.TOTAL_DP >= 30) & 
+                                      (df.ALT_FREQ >= 0.8) & 
+                                      (df.TYPE == "snp") & 
+                                      ~df.OLDVAR.isin(['complex', 'mnp'])].tolist()
+        high90_quality_snps = df["POS"][(df.TOTAL_DP >= 30) & 
+                                      (df.ALT_FREQ >= 0.9) & 
                                       (df.TYPE == "snp") & 
                                       ~df.OLDVAR.isin(['complex', 'mnp'])].tolist()
         htz_snps = df["POS"][(df.TOTAL_DP >= 30) & 
@@ -571,7 +579,7 @@ def extract_snp_count(out_variant_dir, filename_out):
         indels = df["POS"][(df.TOTAL_DP >= 30) & 
                            (df.ALT_FREQ >= 0.7) & 
                            ((df.TYPE == "ins") | (df.TYPE == "del"))].tolist()
-        return (len(high_quality_snps), len(htz_snps), len(indels))
+        return (len(high70_quality_snps), len(high80_quality_snps), len(high90_quality_snps), len(htz_snps), len(indels))
     else:
         logger.debug("FILE " + filename + " NOT FOUND")
         return None
@@ -679,7 +687,7 @@ def obtain_overal_stats(out_stats_dir, output_dir, group):
                 df = df[~df["#SAMPLE"].isin(samples_to_skip)]
                 # print(df)
                 if df.shape[0] > 0:
-                    df[["HQ_SNP", "HTZ_SNP", "INDELS"]] = df.parallel_apply(lambda x: extract_snp_count(
+                    df[["HQ70_SNP", "HQ80_SNP", "HQ90_SNP", "HTZ_SNP", "INDELS"]] = df.parallel_apply(lambda x: extract_snp_count(
                         out_variant_dir, x["#SAMPLE"]), axis=1, result_type="expand")
                     df[["reads_mapped", "perc_mapped"]] = df.parallel_apply(lambda x: extract_mapped_reads(
                         out_stats_bamstats_dir, x["#SAMPLE"]), axis=1, result_type="expand")
