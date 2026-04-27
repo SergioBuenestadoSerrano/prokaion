@@ -371,7 +371,7 @@ def remove_bed_positions(df, bed_file, path_compare):
                 df_filter = df[df.Position == row.Position]
             else:
                 df_aux = df[df.Position == row.Position]
-                df_filter = df_filter.append(df_aux, ignore_index=True)
+                df_filter = pd.concat([df_filter, df_aux], ignore_index=True)
             df = df[df.Position != row.Position]
             counter += 1
 
@@ -396,7 +396,7 @@ def extract_bed_positions(df, bed_file, path_compare):
                 df_filter = df[df.Position == row.Position]
             else:
                 df_aux = df[df.Position == row.Position]
-                df_filter = df_filter.append(df_aux, ignore_index=True)
+                df_filter = pd.concat([df_filter, df_aux], ignore_index=True)
             counter += 1
 
     if counter:
@@ -549,7 +549,7 @@ def recalibrate_ddbb_vcf_intermediate(snp_matrix_ddbb_file, variant_dir, min_cov
     samples_df = samples_df.parallel_apply(lambda x: recheck_variant_rawvcf_intermediate(
         x, POSs, ALTs, variant_dir, min_cov_low_freq=min_cov_low_freq), axis=1)
 
-    final_dft = header_df.append(samples_df, ignore_index=True)
+    final_dft = pd.concat([header_df, samples_df], ignore_index=True)
 
     final_df = final_dft.transpose()
     final_df.columns = selected_columns + samples
