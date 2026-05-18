@@ -60,7 +60,7 @@ def get_arguments():
 
     parser.add_argument('--basecall', type=str, default='dorado', required=True, help="REQUIRED. Program to use in data preprocessing (basecaller and barcoder)")
 
-    parser.add_argument('--model', type=str, default='~/Scripts/git_repos/Dorado/Models/dna_r10.4.1_e8.2_400bps_hac@v4.3.0', required=False, help='The basecaller model to run. Default dna_r10.4.1_e8.2_400bps_hac@v4.3.0 | dna_r10.4_e8.1_hac.cfg')
+    parser.add_argument('--model', type=str, default='~/Scripts/git_repos/Dorado/Models/dna_r10.4.1_e8.2_400bps_sup@v5.2.0', required=False, help='The basecaller model to run. Default dna_r10.4.1_e8.2_400bps_sup@v5.2.0 | dna_r10.4_e8.1_sup.cfg')
 
     parser.add_argument("-s", "--samples", metavar="Samples", type=str, required=False,
                         help="Sample list for conversion from barcode to samples ID")
@@ -430,7 +430,7 @@ if __name__ == "__main__":
 
         logger.info("\n" + GREEN + BOLD + "STARTING BARCODING" + END_FORMATTING)
 
-        if any(f.endswith('unclassified.fastq') for f in os.listdir(out_barcoding_dir)):
+        if any(f.endswith('sequencing_summary.txt') for f in os.listdir(out_barcoding_dir)):
             logger.info("\n" + YELLOW + BOLD +
                         "Ommiting BARCODING/DEMULTIPLEX" + END_FORMATTING + "\n")
         else:
@@ -522,37 +522,41 @@ if __name__ == "__main__":
         with open(args.samples, 'r') as f:
             for line in f:
                 barcode, sample = line.split('\t')
-                # print(barcode,sample)
-                barcode_path = os.path.join(out_barcoding_dir, barcode)
-                # print(barcode_path)
-                output_samples = os.path.join(
-                    out_samples_dir, sample.strip() + '.fastq')
-                # print(output_samples)
-                filtered_samples = os.path.join(
-                    out_samples_filtered_dir, sample.strip() + '.fastq.gz')
+                sample = sample.strip()
+
+                barcode_path = None
+                for root, dirs, _ in os.walk(out_barcoding_dir):
+                    for d in dirs:
+                        if d == barcode:
+                            barcode_path = os.path.join(root, d)
+                            break
+                    if barcode_path:
+                        break
+
+                if barcode_path is None:
+                    logger.warning(YELLOW + 'Barcode folder not found for: ' + barcode + END_FORMATTING)
+                    continue
+
+                output_samples = os.path.join(out_samples_dir, sample + '.fastq')
+                filtered_samples = os.path.join(out_samples_filtered_dir, sample + '.fastq.gz')
 
                 logger.info('\n' + BLUE + BOLD + sample + END_FORMATTING)
 
                 sum_files = []
                 for root, _, files in os.walk(barcode_path):
                     for name in files:
-                        filename = os.path.join(barcode_path, name)
-                        # print(filename)
-                        sum_files.append(filename)
-                    logger.info(MAGENTA + BOLD + "Processing {} files in {}".format(
-                        len(sum_files), sample) + END_FORMATTING)
+                        sum_files.append(os.path.join(root, name))
 
-                    if os.path.isfile(filtered_samples):
-                        logger.info(
-                            YELLOW + sample + ' sample already renamed and filtered' + END_FORMATTING)
-                    else:
-                        logger.info(GREEN + 'Renaming sample ' +
-                                    sample + END_FORMATTING)
-                        rename_files(output_samples)
+                logger.info(MAGENTA + BOLD + "Processing {} files in {}".format(
+                    len(sum_files), sample) + END_FORMATTING)
 
-                        logger.info(GREEN + 'Filtering sample ' +
-                                    sample + END_FORMATTING)
-                        ONT_QC_filtering(output_samples, filtered_samples)
+                if os.path.isfile(filtered_samples):
+                    logger.info(YELLOW + sample + ' sample already renamed and filtered' + END_FORMATTING)
+                else:
+                    logger.info(GREEN + 'Renaming sample ' + sample + END_FORMATTING)
+                    rename_files(output_samples)
+                    logger.info(GREEN + 'Filtering sample ' + sample + END_FORMATTING)
+                    ONT_QC_filtering(output_samples, filtered_samples)
 
     after = datetime.datetime.now()
     print(('\n' + "Done with function rename_files & ONT_QC_filtering in: %s" %
