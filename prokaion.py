@@ -828,37 +828,41 @@ if __name__ == "__main__":
         with open(args.samples, 'r') as f:
             for line in f:
                 barcode, sample = line.split('\t')
-                # print(barcode,sample)
-                barcode_path = os.path.join(out_barcoding_dir, barcode)
-                # print(barcode_path)
-                output_samples = os.path.join(
-                    out_samples_dir, sample.strip() + '.fastq')
-                # print(output_samples)
-                filtered_samples = os.path.join(
-                    output_dir, sample.strip() + '.fastq.gz')
+                sample = sample.strip()
+
+                barcode_path = None
+                for root, dirs, _ in os.walk(out_barcoding_dir):
+                    for d in dirs:
+                        if d == barcode:
+                            barcode_path = os.path.join(root, d)
+                            break
+                    if barcode_path:
+                        break
+
+                if barcode_path is None:
+                    logger.warning(YELLOW + 'Barcode folder not found for: ' + barcode + END_FORMATTING)
+                    continue
+
+                output_samples = os.path.join(out_samples_dir, sample + '.fastq')
+                filtered_samples = os.path.join(output_dir, sample + '.fastq.gz')
 
                 logger.info('\n' + BLUE + BOLD + sample + END_FORMATTING)
 
                 sum_files = []
                 for root, _, files in os.walk(barcode_path):
                     for name in files:
-                        filename = os.path.join(barcode_path, name)
-                        # print(filename)
-                        sum_files.append(filename)
-                    logger.info(MAGENTA + BOLD + "Processing {} files in {}".format(
-                        len(sum_files), sample) + END_FORMATTING)
+                        sum_files.append(os.path.join(root, name))
 
-                    if os.path.isfile(filtered_samples):
-                        logger.info(
-                            YELLOW + sample + ' sample already renamed and filtered' + END_FORMATTING)
-                    else:
-                        logger.info(GREEN + 'Renaming sample ' +
-                                    sample + END_FORMATTING)
-                        rename_files(output_samples)
+                logger.info(MAGENTA + BOLD + "Processing {} files in {}".format(
+                    len(sum_files), sample) + END_FORMATTING)
 
-                        logger.info(GREEN + 'Filtering sample ' +
-                                    sample + END_FORMATTING)
-                        ONT_QC_filtering(output_samples, filtered_samples)
+                if os.path.isfile(filtered_samples):
+                    logger.info(YELLOW + sample + ' sample already renamed and filtered' + END_FORMATTING)
+                else:
+                    logger.info(GREEN + 'Renaming sample ' + sample + END_FORMATTING)
+                    rename_files(output_samples)
+                    logger.info(GREEN + 'Filtering sample ' + sample + END_FORMATTING)
+                    ONT_QC_filtering(output_samples, filtered_samples)
 
     after = datetime.datetime.now()
     print(('\n' + "Done with function rename_files & ONT_QC_filtering in: %s" %
